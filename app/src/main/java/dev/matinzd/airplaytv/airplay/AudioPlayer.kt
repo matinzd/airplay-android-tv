@@ -34,6 +34,7 @@ class AudioPlayer(private val sync: AvSync) {
 
     private var track: AudioTrack? = null
     private var lowLatencyTrack = false
+    private var lateRun = 0
     private var aac: MediaCodec? = null
     private var aacPtsUs = 0L
     private var samplesPerFrame = 1024
@@ -120,8 +121,14 @@ class AudioPlayer(private val sync: AvSync) {
                 sync.reportAudio(needNs)
                 val error = heardAtNs - (ptsNs + sync.audioLatencyNs) // > 0: late, < 0: early
                 stats.error(error)
+                // Inserted silence only grows the queue and drops never shrink it, so a jittery
+                // sender (iPhone) can settle between MAX_LATE and RESYNC_LATE and lose every
+                // packet. Start over after a run of drops, as for a far-late packet.
+                val stuckLate = error > MAX_LATE_NS && lateRun >= RESYNC_AFTER_DROPS
+                lateRun = if (error > MAX_LATE_NS) lateRun + 1 else 0
                 when {
-                    error > RESYNC_LATE_NS && queuedFrames(t) > SAMPLE_RATE / 20 -> {
+                    (error > RESYNC_LATE_NS || stuckLate) && queuedFrames(t) > SAMPLE_RATE / 20 -> {
+                        lateRun = 0
                         // Far behind with audio queued (e.g. for a higher latency): start over.
                         // Once the queue is empty, further late packets are simply dropped,
                         // so a backlog of stale packets doesn't trigger a resync each.
@@ -368,6 +375,7 @@ class AudioPlayer(private val sync: AvSync) {
         // Music has no picture to stay in sync with; it sits ~40 ms behind its slot here.
         private const val MAX_LATE_MUSIC_NS = 120 * AvSync.MS
         private const val RESYNC_LATE_NS = 150 * AvSync.MS
+        private const val RESYNC_AFTER_DROPS = 10 // about 110 ms of AAC-ELD packets
         private const val DEFAULT_DEVICE_LATENCY_NS = 200 * AvSync.MS // Streamer HDMI: ~210 ms
         private const val MAX_EARLY_NS = 15 * AvSync.MS
         private const val BOGUS_EARLY_NS = 4_000 * AvSync.MS
