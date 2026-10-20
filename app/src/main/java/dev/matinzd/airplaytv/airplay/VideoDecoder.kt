@@ -181,13 +181,19 @@ class VideoDecoder(
         // After a failure (e.g. the Surface is still attached to the video player), don't
         // retry on every incoming frame.
         if (System.nanoTime() - lastStartFailureNs < START_RETRY_DELAY_NS) return
+        // HEVC takes VPS + SPS + PPS together as csd-0.
+        val vpsBytes = vps
+        if (hevc && vpsBytes == null) return
         var c: MediaCodec? = null
         try {
             val mime = if (hevc) MediaFormat.MIMETYPE_VIDEO_HEVC else MediaFormat.MIMETYPE_VIDEO_AVC
+            c = createLowLatencyDecoder(mime)
+            // Ask for low latency only if this decoder has it: on Android 11 an unsupported
+            // KEY_LOW_LATENCY makes configure() fail (OMX.MS.AVC.Decoder on MStar TVs).
+            val lowLatency = Build.VERSION.SDK_INT >= 30 && c.codecInfo.getCapabilitiesForType(mime)
+                .isFeatureSupported(MediaCodecInfo.CodecCapabilities.FEATURE_LowLatency)
             val format = MediaFormat.createVideoFormat(mime, 3840, 2160).apply {
-                if (hevc) {
-                    // HEVC takes VPS + SPS + PPS together as csd-0.
-                    val vpsBytes = vps ?: return
+                if (hevc && vpsBytes != null) {
                     setByteBuffer("csd-0", ByteBuffer.wrap(vpsBytes + spsBytes + ppsBytes))
                 } else {
                     setByteBuffer("csd-0", ByteBuffer.wrap(spsBytes))
@@ -195,9 +201,8 @@ class VideoDecoder(
                 }
                 setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 8 * 1024 * 1024)
                 setInteger(MediaFormat.KEY_PRIORITY, 0) // real-time
-                if (Build.VERSION.SDK_INT >= 30) setInteger(MediaFormat.KEY_LOW_LATENCY, 1)
+                if (lowLatency) setInteger(MediaFormat.KEY_LOW_LATENCY, 1)
             }
-            c = createLowLatencyDecoder(mime)
             c.setCallback(Callback(), handler)
             c.configure(format, s, null, 0)
             c.start()
