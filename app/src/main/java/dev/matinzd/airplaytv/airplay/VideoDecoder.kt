@@ -18,6 +18,8 @@ import java.nio.ByteBuffer
  * (`timestamp + sync latency - decode time`), then are decoded and shown at the
  * slot. Waiting before the decoder rather than after it matters: the display
  * queue only has a few buffers, and holding decoded frames there stalls the codec.
+ * In low-latency mode ([AvSync.immediateVideo]) nothing waits: every frame is
+ * decoded on arrival and shown as soon as it is decoded.
  *
  * Frames start arriving before the playback screen (and its Surface) exists,
  * especially when the TV is waking from standby, and the iPhone only sends a
@@ -235,7 +237,8 @@ class VideoDecoder(
         while (freeInputs.isNotEmpty() && pending.isNotEmpty()) {
             val frame = pending.first()
             val now = System.nanoTime()
-            if (frame.ptsNs > 0) {
+            // Low-latency mode: decode at once; the frame is shown as soon as it comes out.
+            if (frame.ptsNs > 0 && !sync.immediateVideo) {
                 val dueNs = frame.ptsNs + sync.latencyNs - decodeLeadNs
                 if (dueNs - now > AvSync.MS) {
                     scheduleFeedLocked(dueNs)
@@ -318,8 +321,8 @@ class VideoDecoder(
                     val requiredNs = times[0] - ptsNs + decodeNs
                     if (now - codecStartedAtNs > STARTUP_GRACE_NS) sync.reportVideo(requiredNs)
                     val target = ptsNs + sync.latencyNs
-                    if (target - now in MIN_SCHEDULE_NS..MAX_SCHEDULE_NS) renderAtNs = target
-                    stats.rendered(requiredNs, if (renderAtNs != 0L) renderAtNs - now else 0L)
+                    if (!sync.immediateVideo && target - now in MIN_SCHEDULE_NS..MAX_SCHEDULE_NS) renderAtNs = target
+                    stats.rendered(requiredNs, if (renderAtNs != 0L) renderAtNs - now else 0L, decodeLeadNs)
                 }
             }
             try {
@@ -367,7 +370,7 @@ class VideoDecoder(
         @Synchronized fun queued(backlog: Int) { if (backlog > maxBacklog) maxBacklog = backlog }
 
         /** [lateNs]: latency this frame needed (arrival + decode); [holdNs]: held this long after decoding. */
-        @Synchronized fun rendered(lateNs: Long, holdNs: Long) {
+        @Synchronized fun rendered(lateNs: Long, holdNs: Long, decodeLeadNs: Long) {
             rendered++
             lateSumNs += lateNs
             if (lateNs > lateMaxNs) lateMaxNs = lateNs
@@ -375,9 +378,9 @@ class VideoDecoder(
             val elapsed = System.nanoTime() - windowStart
             if (elapsed >= 5_000_000_000L && Diagnostics.enabled) {
                 val secs = elapsed / 1e9
-                Log.i(TAG, "in %.1f fps, out %.1f fps, needed avg %d / max %d ms, held avg %d ms, backlog max %d".format(
+                Log.i(TAG, "in %.1f fps, out %.1f fps, needed avg %d / max %d ms, held avg %d ms, backlog max %d, decode lead %d ms".format(
                     received / secs, rendered / secs, lateSumNs / rendered / 1_000_000, lateMaxNs / 1_000_000,
-                    holdSumNs / rendered / 1_000_000, maxBacklog))
+                    holdSumNs / rendered / 1_000_000, maxBacklog, decodeLeadNs / 1_000_000))
                 windowStart = System.nanoTime()
                 received = 0; rendered = 0; maxBacklog = 0; lateSumNs = 0; lateMaxNs = 0; holdSumNs = 0
             }

@@ -71,7 +71,7 @@ dnssd_t *g_dnssd = nullptr;
 jobject g_listener = nullptr;       // global ref to AirPlayNative.Listener
 struct {
     jmethodID onClientRequest, onConnectionCount, onConnectionLost;
-    jmethodID onVideoData, onVideoCodec, onVideoReset, onVideoFlush;
+    jmethodID onVideoData, onVideoCodec, onVideoReset, onVideoFlush, onPresentationClock;
     jmethodID onAudioFormat, onAudioPcm, onAudioAac, onAudioFlush;
     jmethodID onVolume, onCoverArt, onMetadata;
     jmethodID onVideoPlay, onVideoScrub, onVideoRate, onVideoStop, onVideoPlaylistRemove, onVideoPlaybackInfo;
@@ -122,6 +122,8 @@ int64_t monotonic_now_ns() {
    ~9 h apart (uptime vs wall clock). So each stream has its own offset. A stream
    adopts the other's offset when its timestamps make sense with it (that keeps lip
    sync); otherwise it anchors on its own and the two stop disturbing each other. */
+template <typename... Args> void call_listener(jmethodID method, Args... args);
+
 constexpr int64_t kNoOffset = INT64_MIN;
 constexpr int64_t kPlausibleNs = 5000000000LL;  // AirPlay never schedules >5 s ahead/behind
 enum { STREAM_AUDIO = 0, STREAM_VIDEO = 1 };
@@ -142,6 +144,7 @@ int64_t presentation_ns(uint64_t remote_ns, uint64_t local_realtime_ns, bool sen
         if (other != kNoOffset && llabs((int64_t) remote_ns + other - now_mono) < kPlausibleNs) {
             offset = other;  // same sender clock as the other stream: share it (lip sync)
             LOG_I("presentation clock: %s shares the %s clock", what, stream == STREAM_AUDIO ? "video" : "audio");
+            call_listener(m.onPresentationClock, (jboolean) false);
         } else {
             int64_t anchor = now_mono;
             if (sender_time && local_realtime_ns) {
@@ -152,6 +155,9 @@ int64_t presentation_ns(uint64_t remote_ns, uint64_t local_realtime_ns, bool sen
             LOG_I("presentation clock: %s anchored on %s%s", what,
                   anchor == now_mono ? "arrival time" : "the sender's NTP time",
                   other != kNoOffset ? " (different clock from the other stream)" : "");
+            // Two streams on different clocks: their relative timing is unknown, so the
+            // app must not hold one back for the other.
+            if (other != kNoOffset) call_listener(m.onPresentationClock, (jboolean) true);
         }
         g_offset[stream] = offset;
     }
@@ -162,6 +168,7 @@ int64_t presentation_ns(uint64_t remote_ns, uint64_t local_realtime_ns, bool sen
         offset = now_mono - (int64_t) remote_ns;
         g_offset[stream] = offset;
         pts = (int64_t) remote_ns + offset;
+        if (g_offset[1 - stream] != kNoOffset) call_listener(m.onPresentationClock, (jboolean) true);
     }
     return pts > 0 ? pts : 0;
 }
@@ -598,6 +605,7 @@ jint native_start(JNIEnv *env, jclass, jobject listener, jstring jname, jbyteArr
     m.onVideoCodec = env->GetMethodID(cls, "onVideoCodec", "(Z)V");
     m.onVideoReset = env->GetMethodID(cls, "onVideoReset", "(I)V");
     m.onVideoFlush = env->GetMethodID(cls, "onVideoFlush", "()V");
+    m.onPresentationClock = env->GetMethodID(cls, "onPresentationClock", "(Z)V");
     m.onAudioFormat = env->GetMethodID(cls, "onAudioFormat", "(IIZZ)V");
     m.onAudioPcm = env->GetMethodID(cls, "onAudioPcm", "([BJ)V");
     m.onAudioAac = env->GetMethodID(cls, "onAudioAac", "([BJ)V");

@@ -43,6 +43,11 @@ object AirPlayNative {
         fun onVideoCodec(isHevc: Boolean)
         fun onVideoReset(type: Int)
         fun onVideoFlush()
+        /**
+         * How audio and video timestamps were mapped to the local clock: [independent] when
+         * the two streams had to be anchored separately (lip sync is then unknown).
+         */
+        fun onPresentationClock(independent: Boolean)
 
         fun onAudioFormat(ct: Int, samplesPerFrame: Int, usingScreen: Boolean, isMedia: Boolean)
         /** Decoded 44.1 kHz stereo S16LE (ALAC is decoded natively). [ptsNs] as for video. */
@@ -95,7 +100,7 @@ object AirPlayNative {
         language: String,
         /** New devices must enter a PIN shown on the TV. */
         requirePin: Boolean,
-        /** Offer H.265 (4K) mirroring. */
+        /** Offer H.265 mirroring (feature bit 42; 4K when the display allows it). */
         allowH265: Boolean,
         debug: Boolean,
     ): Int

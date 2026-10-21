@@ -16,8 +16,11 @@ keyframe only at the start and on rotation.
   `c2.mtk.hevc.decoder.lowlatency` on the Streamer). This cut the delay a lot.
 - A new SPS (rotation) starts a fresh decoder. The old one is released first: a
   Surface can feed only one decoder.
-- Advertise feature bit 42 (screen multi-codec) and a 3840x2160 display so senders
-  can use H.265 4K; senders that can't keep using H.264. A setting turns 4K off.
+- Advertise the display's own size (at most 1920x1080), or 3840x2160 when the display
+  is 4K and the "4K mirroring" setting is on: an iPhone encoded 3840x2160 H.265 for a
+  1080p TV, which only cost encode, Wi-Fi and decode time. Feature bit 42 (screen
+  multi-codec, H.265) is advertised whenever the device has an H.265 decoder: on an
+  MStar TV the HEVC decoder holds frames for ~24 ms, the AVC decoder for ~47 ms.
 - The playback window asks for minimal post-processing (HDMI ALLM / game mode).
 
 ## Consequences

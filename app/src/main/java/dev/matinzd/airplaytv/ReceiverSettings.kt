@@ -16,12 +16,12 @@ class ReceiverSettings(context: Context) {
         get() = prefs.getBoolean(KEY_PIN, false)
         set(value) = prefs.edit().putBoolean(KEY_PIN, value).apply()
 
-    /** Offer 4K / H.265 mirroring to senders that support it. */
+    /** Offer 4K mirroring to senders that support it (only on a 4K display). */
     var allow4k: Boolean
         get() = prefs.getBoolean(KEY_4K, true)
         set(value) = prefs.edit().putBoolean(KEY_4K, value).apply()
 
-    /** Mirroring: show video as early as possible instead of waiting for audio (no lip-sync). */
+    /** Mirroring: show every frame as soon as it is decoded; audio keeps its own timing (no lip-sync). */
     var lowLatency: Boolean
         get() = prefs.getBoolean(KEY_LOW_LATENCY, false)
         set(value) = prefs.edit().putBoolean(KEY_LOW_LATENCY, value).apply()
