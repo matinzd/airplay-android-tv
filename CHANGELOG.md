@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/matinzd/airplay-android-tv/compare/v0.2.0...v0.2.1) (2026-10-26)
+
+
+### Bug fixes
+
+* **audio:** resync after a run of late drops while mirroring ([#3](https://github.com/matinzd/airplay-android-tv/issues/3)) ([28a3a74](https://github.com/matinzd/airplay-android-tv/commit/28a3a74ff1d4f4daee571f2f005ec3acd1165cd2))
+* **video:** request low latency only from decoders that support it ([#2](https://github.com/matinzd/airplay-android-tv/issues/2)) ([4486203](https://github.com/matinzd/airplay-android-tv/commit/44862031976e4d423f1baf9e8112b17e9f488a5f))
+
 ## [0.2.0](https://github.com/matinzd/airplay-android-tv/compare/v0.1.0...v0.2.0) (2026-10-18)
 
 

@@ -3,7 +3,7 @@ plugins {
 }
 
 // Bumped by release-please on each release (release-please-config.json).
-val appVersion = "0.2.0" // x-release-please-version
+val appVersion = "0.2.1" // x-release-please-version
 // 1.2.3 -> 10203, so every release installs over the previous one.
 val appVersionCode = appVersion.split(".").map(String::toInt).let { (major, minor, patch) ->
     major * 10_000 + minor * 100 + patch
