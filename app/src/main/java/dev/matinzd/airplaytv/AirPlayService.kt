@@ -282,6 +282,14 @@ class AirPlayService : Service(), AirPlayNative.Listener {
 
     override fun onVideoFlush() = Unit
 
+    override fun onPresentationClock(independent: Boolean) {
+        if (independent != sync.independentClocks) {
+            Log.i(TAG, if (independent) "audio and video on different clocks: no lip sync, each follows its own need"
+                       else "audio and video share a clock")
+            sync.independentClocks = independent
+        }
+    }
+
     override fun onAudioFormat(ct: Int, samplesPerFrame: Int, usingScreen: Boolean, isMedia: Boolean) {
         sync.audioOnly = !usingScreen
         audio.configure(ct, samplesPerFrame, lowLatency = usingScreen)

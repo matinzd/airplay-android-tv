@@ -30,11 +30,25 @@ class AvSync(private val clock: () -> Long = System::nanoTime) {
     @Volatile
     var decoupled = false
 
+    /**
+     * Set by the native layer when audio and video had to be anchored on different
+     * clocks (one stream restarted with new timestamps). Lip sync is unknown then, so
+     * holding video back for audio would only add delay: the streams follow their own
+     * needs, as in low-latency mode, but video is still scheduled smoothly.
+     */
+    @Volatile
+    var independentClocks = false
+
+    /** Low-latency mode while mirroring: video is shown as soon as it is decoded. */
+    val immediateVideo get() = decoupled && !audioOnly
+
+    private val videoAlone get() = (decoupled || independentClocks) && !audioOnly
+
     @Volatile
     private var ownAudioLatencyNs = 0L
 
-    /** The latency audio is played at: the shared one, or its own in low-latency mode. */
-    val audioLatencyNs get() = if (decoupled && !audioOnly) ownAudioLatencyNs else latencyNs
+    /** The latency audio is played at: the shared one, or its own when video follows only itself. */
+    val audioLatencyNs get() = if (videoAlone) ownAudioLatencyNs else latencyNs
 
     // A single late video frame (a Wi-Fi hiccup) just shows late; only repeated
     // lateness should hold every later frame back, so video ignores its top sample.
@@ -54,6 +68,7 @@ class AvSync(private val clock: () -> Long = System::nanoTime) {
         latencyNs = 0
         ownAudioLatencyNs = 0
         audioOnly = false
+        independentClocks = false
         video.reset()
         audio.reset()
     }
@@ -65,7 +80,7 @@ class AvSync(private val clock: () -> Long = System::nanoTime) {
         val now = clock()
         window.add(requiredNs, now)
 
-        if (decoupled && !audioOnly) {
+        if (videoAlone) {
             // Audio follows only itself (raised at once, lowered slowly); video below
             // then follows only itself too.
             val audioNeed = audio.max(now)
@@ -74,7 +89,7 @@ class AvSync(private val clock: () -> Long = System::nanoTime) {
                 if (target > ownAudioLatencyNs || ownAudioLatencyNs - target > HYSTERESIS_NS) ownAudioLatencyNs = target
             }
         }
-        val needed = if (decoupled && !audioOnly) video.max(now) else maxOf(video.max(now), audio.max(now))
+        val needed = if (videoAlone) video.max(now) else maxOf(video.max(now), audio.max(now))
         if (needed == Window.NONE) return
         // Mirroring wants the lowest latency that works. Music arrives in bursts: keep a
         // wider margin, start near where it settles (~0.7 s here) and never lower it, so

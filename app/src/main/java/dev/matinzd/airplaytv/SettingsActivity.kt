@@ -30,7 +30,7 @@ class SettingsActivity : Activity() {
             { onOff(settings.requirePin) }) { settings.requirePin = !settings.requirePin; apply() }
         row(list, "4K mirroring", "Sharper picture from devices that support it. Uses more Wi-Fi",
             { onOff(settings.allow4k) }) { settings.allow4k = !settings.allow4k; apply() }
-        row(list, "Low-latency mirroring", "The picture follows your device faster. Sound can be a little behind",
+        row(list, "Low-latency mirroring", "The picture is shown as soon as it arrives. Sound can be behind, and motion less smooth on a weak Wi-Fi",
             { onOff(settings.lowLatency) }) { settings.lowLatency = !settings.lowLatency; apply() }
         row(list, "Remembered devices", "Devices that entered the code. Select to forget them all",
             { settings.rememberedDevices.size.let { if (it == 0) "None" else "$it" } }) {

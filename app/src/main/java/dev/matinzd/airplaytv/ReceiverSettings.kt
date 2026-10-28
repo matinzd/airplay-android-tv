@@ -21,7 +21,7 @@ class ReceiverSettings(context: Context) {
         get() = prefs.getBoolean(KEY_4K, true)
         set(value) = prefs.edit().putBoolean(KEY_4K, value).apply()
 
-    /** Mirroring: show video as early as possible instead of waiting for audio (no lip-sync). */
+    /** Mirroring: show every frame as soon as it is decoded; audio keeps its own timing (no lip-sync). */
     var lowLatency: Boolean
         get() = prefs.getBoolean(KEY_LOW_LATENCY, false)
         set(value) = prefs.edit().putBoolean(KEY_LOW_LATENCY, value).apply()

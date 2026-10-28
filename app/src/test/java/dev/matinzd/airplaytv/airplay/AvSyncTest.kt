@@ -142,6 +142,32 @@ class AvSyncTest {
     }
 
     @Test
+    fun independentClocksLetVideoIgnoreAudioButKeepScheduling() {
+        sync.independentClocks = true
+        sync.reportAudio(300 * MS)
+        sync.reportVideo(50 * MS)
+        sync.reportVideo(50 * MS)
+        assertEquals(70 * MS, sync.latencyNs)
+        assertEquals(320 * MS, sync.audioLatencyNs)
+        assertEquals(false, sync.immediateVideo)
+    }
+
+    @Test
+    fun lowLatencyModeShowsVideoAtOnce() {
+        sync.decoupled = true
+        assertEquals(true, sync.immediateVideo)
+        sync.audioOnly = true
+        assertEquals(false, sync.immediateVideo)
+    }
+
+    @Test
+    fun resetClearsIndependentClocks() {
+        sync.independentClocks = true
+        sync.reset()
+        assertEquals(false, sync.independentClocks)
+    }
+
+    @Test
     fun resetClearsEverything() {
         sync.audioOnly = true
         sync.reportAudio(500 * MS)

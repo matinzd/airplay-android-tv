@@ -69,7 +69,8 @@ See ADR 0009 for the full design. Key numbers:
 | Default device latency (before measured) | 200 ms (Streamer HDMI ≈ 210 ms) |
 | Re-anchor a stream's clock | timestamp > 5 s from now |
 | Video: ignore after decoder start | 1 s |
-| Low-latency mirroring setting | video ignores audio's need |
+| Low-latency mirroring setting | video is decoded and shown at once; audio keeps its own latency |
+| Audio and video on different clocks | video ignores audio's need (lip sync is unknown) |
 
 Expected added delay: mirroring 0-50 ms without sound, about 160 ms with sound; music about 700 ms.
 
@@ -126,7 +127,7 @@ focused "Return to AirPlay" button while a session is active.
 | AirPlay name | TV device name | Name in the AirPlay list |
 | Require a code for new devices | Off | PIN pairing (legacy pairing, feature bit 27, `pw=true`) |
 | 4K mirroring | On | Feature bit 42, 3840x2160 display |
-| Low-latency mirroring | Off | Video doesn't wait for audio |
+| Low-latency mirroring | Off | Video is shown as soon as it is decoded; no lip sync |
 | Remembered devices | — | Select to forget all |
 
 Any change restarts the receiver and re-announces it.

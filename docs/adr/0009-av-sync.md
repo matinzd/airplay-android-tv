@@ -34,10 +34,17 @@ Lip sync took many iterations. Lessons learned:
   queued.
 - AirPlay music: fixed latency, start at 700 ms, margin 150 ms, never lowered
   during a session (steady beats low for music).
-- Setting "Low-latency mirroring": video ignores audio's need; audio keeps its own
-  latency (sound may lag the picture).
+- Setting "Low-latency mirroring": every frame is decoded on arrival and shown as soon
+  as it is decoded (no slot, no margin, no jitter window); audio keeps its own latency
+  (sound may lag the picture). Measured on a Beko MStar TV: the shared latency sat
+  at 72-220 ms with a jittery Mac stream, all of it waiting that this mode removes.
+- When a stream has to be anchored on a different clock from the other (one stream
+  restarted with new timestamps), the native layer reports it and video stops waiting
+  for audio's need, as in low-latency mode, but keeps smooth scheduling. The relative
+  timing of the two streams is unknown then, so waiting only added delay (260 ms seen).
 
 ## Consequences
 
 Mirroring adds about 0-50 ms (video only) or about 160 ms with sound, most of it the
-Streamer's ~210 ms HDMI audio path. Music plays smoothly at ~700 ms.
+Streamer's ~210 ms HDMI audio path. Music plays smoothly at ~700 ms. In low-latency
+mode the receiver adds only decode time (24-50 ms on MStar decoders) and the display.
