@@ -12,6 +12,10 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.ServiceInfo
 import android.graphics.BitmapFactory
+import android.graphics.Point
+import android.hardware.display.DisplayManager
+import android.media.MediaCodecList
+import android.media.MediaFormat
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Handler
@@ -154,11 +158,21 @@ class AirPlayService : Service(), AirPlayNative.Listener {
         Diagnostics.enabled = debug
         val keyFile = File(filesDir, "airplay-key.pem").absolutePath
         val language = Locale.getDefault().toLanguageTag()
-        val allow4k = settings.allow4k
+        // Ask senders for the picture size this display really shows: more pixels only
+        // cost encode, Wi-Fi and decode time (an iPhone sent 3840x2160 to a 1080p screen).
+        // 4K is offered only when the display is 4K and the setting allows it.
+        val display = displaySize()
+        val allow4k = settings.allow4k && display.y >= 2160
+        val width = if (allow4k) 3840 else minOf(display.x, 1920)
+        val height = if (allow4k) 2160 else minOf(display.y, 1080)
+        // H.265 stays tied to the setting, so turning it off still turns H.265 off; it is
+        // offered only when this device can decode it.
+        val h265 = settings.allow4k && hasDecoder(MediaFormat.MIMETYPE_VIDEO_HEVC)
+        Log.i(TAG, "advertising ${width}x$height, H.265 ${if (h265) "on" else "off"}")
         val rc = AirPlayNative.nativeStart(
             this, name, hardwareAddress(), keyFile,
-            if (allow4k) 3840 else 1920, if (allow4k) 2160 else 1080, 60,
-            language, settings.requirePin, allow4k, debug,
+            width, height, 60,
+            language, settings.requirePin, h265, debug,
         )
         if (rc != 0) {
             Log.e(TAG, "AirPlay server failed to start: $rc")
@@ -168,6 +182,21 @@ class AirPlayService : Service(), AirPlayNative.Listener {
         advertiser.register()
         val port = AirPlayNative.nativeServicePort(AirPlayNative.SERVICE_AIRPLAY)
         AirPlaySession.update { it.copy(serverRunning = true, serverName = name, port = port, error = null) }
+    }
+
+    /**
+     * The default display's active mode size in pixels (landscape). Not getRealSize(): that
+     * is the size Android renders at, 1920x1080 on the Streamer's 4K panel.
+     */
+    private fun displaySize(): Point {
+        val mode = getSystemService(DisplayManager::class.java)?.getDisplay(android.view.Display.DEFAULT_DISPLAY)?.mode
+        val point = if (mode != null) Point(mode.physicalWidth, mode.physicalHeight) else Point(1920, 1080)
+        if (point.x < point.y) point.set(point.y, point.x)
+        return point
+    }
+
+    private fun hasDecoder(mime: String) = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any {
+        !it.isEncoder && it.supportedTypes.any { t -> t.equals(mime, ignoreCase = true) }
     }
 
     /** The name shown in the iPhone's AirPlay list: the TV's own device name. */

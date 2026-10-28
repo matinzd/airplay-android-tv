@@ -28,7 +28,7 @@ class SettingsActivity : Activity() {
             { settings.name ?: AirPlaySession.state.serverName }) { editName() }
         row(list, "Require a code for new devices", "A new iPhone, iPad or Mac must enter a code shown on the TV once",
             { onOff(settings.requirePin) }) { settings.requirePin = !settings.requirePin; apply() }
-        row(list, "4K mirroring", "Sharper picture from devices that support it. Uses more Wi-Fi",
+        row(list, "4K mirroring", "On a 4K display: sharper picture from devices that support it. Uses more Wi-Fi",
             { onOff(settings.allow4k) }) { settings.allow4k = !settings.allow4k; apply() }
         row(list, "Low-latency mirroring", "The picture follows your device faster. Sound can be a little behind",
             { onOff(settings.lowLatency) }) { settings.lowLatency = !settings.lowLatency; apply() }

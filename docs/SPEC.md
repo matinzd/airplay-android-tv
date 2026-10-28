@@ -32,8 +32,10 @@ battery-optimisation exemption, notifications).
 
 ## 3. Screen mirroring
 
-- Codecs: H.264, or H.265 when "4K mirroring" is on and the sender supports it.
-  Advertised display: 3840x2160 (4K on) or 1920x1080, 60 fps.
+- Codecs: H.264, or H.265 when "4K mirroring" is on, this device has an H.265 decoder
+  and the sender supports it.
+  Advertised display: the display's own size (at most 1920x1080), or 3840x2160 when the
+  display's active mode is 4K and "4K mirroring" is on; 60 fps.
 - Decoder: the low-latency MediaTek decoder when available.
 - Frames since the last keyframe are cached and replayed when the screen attaches.
 - Rotation (new SPS) restarts the decoder cleanly.
@@ -125,7 +127,7 @@ focused "Return to AirPlay" button while a session is active.
 |---|---|---|
 | AirPlay name | TV device name | Name in the AirPlay list |
 | Require a code for new devices | Off | PIN pairing (legacy pairing, feature bit 27, `pw=true`) |
-| 4K mirroring | On | Feature bit 42, 3840x2160 display |
+| 4K mirroring | On | Feature bit 42 (H.265) when there is a decoder; 3840x2160 display only on a 4K display |
 | Low-latency mirroring | Off | Video doesn't wait for audio |
 | Remembered devices | — | Select to forget all |
 

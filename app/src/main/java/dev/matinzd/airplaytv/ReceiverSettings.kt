@@ -16,7 +16,7 @@ class ReceiverSettings(context: Context) {
         get() = prefs.getBoolean(KEY_PIN, false)
         set(value) = prefs.edit().putBoolean(KEY_PIN, value).apply()
 
-    /** Offer 4K / H.265 mirroring to senders that support it. */
+    /** Offer 4K / H.265 mirroring to senders that support it (4K only on a 4K display). */
     var allow4k: Boolean
         get() = prefs.getBoolean(KEY_4K, true)
         set(value) = prefs.edit().putBoolean(KEY_4K, value).apply()

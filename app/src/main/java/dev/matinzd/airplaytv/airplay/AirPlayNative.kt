@@ -95,7 +95,7 @@ object AirPlayNative {
         language: String,
         /** New devices must enter a PIN shown on the TV. */
         requirePin: Boolean,
-        /** Offer H.265 (4K) mirroring. */
+        /** Offer H.265 mirroring (feature bit 42; 4K when the display allows it). */
         allowH265: Boolean,
         debug: Boolean,
     ): Int
